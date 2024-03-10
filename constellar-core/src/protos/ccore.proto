@@ -1,0 +1,16 @@
+syntax = "proto3";
+package ccore;
+
+import "google/protobuf/empty.proto";
+
+
+service CCore {
+    rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message HealthCheckRequest {
+}
+
+message HealthCheckResponse {
+    bool living = 1;
+}
