@@ -1,11 +1,15 @@
 [package]
-name = "constellar-core"
+name = "constellar-driver-manager"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+arrow = "51.0.0"
+daemonize = "0.5.0"
+futures-util = "0.3.30"
+pq-sys = "0.5.0"
 prost = "0.12.3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 tonic = "0.11.0"

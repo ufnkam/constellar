@@ -2,22 +2,26 @@ pub mod ccore {
     tonic::include_proto!("ccore");
 }
 
-use ccore::{HealthCheckResponse, HealthCheckRequest};
 use ccore::c_core_server::{CCore, CCoreServer};
+use std::env;
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
-use std::env;
+
+use self::ccore::{HealthCheckRequest, HealthCheckResponse};
 
 #[derive(Debug, Default)]
 pub struct CCoreService {}
 
 #[tonic::async_trait]
 impl CCore for CCoreService {
-    async fn health_check(&self, request: Request<HealthCheckRequest>) -> Result<Response<HealthCheckResponse>, Status> {
+    async fn health_check(
+        &self,
+        request: Request<HealthCheckRequest>,
+    ) -> Result<Response<HealthCheckResponse>, Status> {
         print!("Health check requested.");
-        let reply = HealthCheckResponse{living: true};
+        let reply = HealthCheckResponse { living: true };
         Ok(Response::new(reply))
-    } 
+    }
 }
 
 pub async fn run_server() -> Result<(), Box<dyn std::error::Error>> {
@@ -26,9 +30,6 @@ pub async fn run_server() -> Result<(), Box<dyn std::error::Error>> {
     let ccore = CCoreService::default();
     let ccore = CCoreServer::new(ccore);
     println!("Running on port {}...", port);
-    Server::builder()
-        .add_service(ccore)
-        .serve(addr)
-        .await?;
+    Server::builder().add_service(ccore).serve(addr).await?;
     Ok(())
 }

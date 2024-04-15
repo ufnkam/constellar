@@ -1,0 +1,16 @@
+syntax = "proto3";
+package cdriver;
+
+import "google/protobuf/empty.proto";
+
+
+service Driver {
+    rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message HealthCheckRequest {
+}
+
+message HealthCheckResponse {
+    bool living = 1;
+}
