@@ -1,3 +1,3 @@
 pub mod column;
 
-use column::Column;
+pub use column::Column;
