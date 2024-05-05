@@ -5,7 +5,8 @@ import "google/protobuf/empty.proto";
 
 
 service Driver {
-    rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+    rpc HealthCheck() returns (HealthCheckResponse);
+    rpc ListConnections(google.protobuf.Empty) returns stream ()
 }
 
 message HealthCheckRequest {

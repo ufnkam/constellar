@@ -4,4 +4,6 @@ pub trait Column {
     fn get_data_type(self) -> &'static str;
 }
 
-pub trait ToArrow {}
+pub trait ToArrow {
+    fn transform<T: arrow::array::Array>(self) -> T;
+}
