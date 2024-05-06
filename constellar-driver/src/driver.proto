@@ -1,0 +1,19 @@
+syntax = "proto3";
+package cdriver;
+
+    import "google/protobuf/empty.proto";
+
+
+service DriverService {
+    rpc HealthCheck(google.protobuf.Empty) returns (HealthCheckResponse);
+    rpc ListDataSources(google.protobuf.Empty) returns  (stream DataSource);
+}
+
+message HealthCheckResponse {
+    bool living = 1;
+}
+
+message DataSource {
+    string host = 1;
+    string resource = 2;
+}
