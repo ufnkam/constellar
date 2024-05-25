@@ -9,7 +9,6 @@ edition = "2021"
 arrow = "51.0.0"
 daemonize = "0.5.0"
 futures-util = "0.3.30"
-pq-sys = "0.5.0"
 prost = "0.12.3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 tonic = "0.11.0"
