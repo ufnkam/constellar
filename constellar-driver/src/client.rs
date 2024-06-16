@@ -4,7 +4,11 @@ pub mod cdriver {
 use cdriver::c_driver_client::CDriverClient;
 use cdriver::HealthCheckResponse;
 
-pub type ClientWrapper = CDriverClient<tonic::transport::Channel>;
+
+struct Client {}
+
+impl Client {}
+
 
 pub async fn health_check(
     client: &mut CDriverClient<tonic::transport::Channel>,

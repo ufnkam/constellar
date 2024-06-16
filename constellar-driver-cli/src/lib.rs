@@ -1,1 +1,3 @@
-pub mod cli;
+mod cmd;
+
+pub use cmd::cli::build_cli;

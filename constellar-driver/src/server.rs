@@ -31,11 +31,12 @@ pub struct DriverServer<D: Driver<C, P>, C: Connection<P> + Copy, P: ConnectionP
     stash: Box<ConnectionStash<C, P>>,
 }
 
-impl<D: Driver<C, P>, C: Connection<P> + Copy, P: ConnectionParams + Hash> DriverServer<D, C, P> {
+impl<D: Driver<C, P>, C: Connection<P> + Copy, P: ConnectionParams + Hash> DriverServer <D, C, P> {
     pub fn new(driver: D) -> Self {
         let stash = driver.make_stash();
         return DriverServer { driver, stash };
     }
+
     pub async fn run_server(&self) -> Result<(), Box<dyn std::error::Error>> {
         let port = env::var("PORT").unwrap_or("50051".to_string());
         let addr = format!("0.0.0.0:{}", port).parse()?;

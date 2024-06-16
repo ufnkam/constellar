@@ -1,3 +1,5 @@
+use constellar_driver_cli::build_cli;
+
 fn main() {
-    println!("Hello, world!");
+    build_cli("1");
 }
