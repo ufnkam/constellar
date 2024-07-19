@@ -18,7 +18,7 @@ fn info(msg_type: &str) {
 
 pub async fn build_cli<D, C, P>(server: DriverServer<D, C, P>) -> Result<(), Box<dyn std::error::Error>>
 where D: Driver<C, P>,
-        P: ConnectionParams + Hash,
+        P: ConnectionParams + Hash + Clone,
         C: Connection<P> + Copy
 {
     let cli = Command::new("driver")

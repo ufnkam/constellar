@@ -10,13 +10,13 @@ enum SessionState {
     Inactive,
 }
 
-pub struct Session<'a, C: Connection<P> + Copy, P: ConnectionParams + Hash> {
+pub struct Session<'a, C: Connection<P> + Copy, P: ConnectionParams + Hash + Clone> {
     pool: &'a mut ConnectionPool<C, P>,
     state: SessionState,
     pub connection: Option<C>,
 }
 
-impl<'a, C: Connection<P> + Copy, P: ConnectionParams + Hash> Session<'a, C, P> {
+impl<'a, C: Connection<P> + Copy, P: ConnectionParams + Hash + Clone> Session<'a, C, P> {
     pub fn new(pool: &'a mut ConnectionPool<C, P>) -> Self {
         return Self {
             pool: pool,

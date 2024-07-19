@@ -4,7 +4,7 @@ use crate::engine::stash::ConnectionStash;
 use crate::sql::Column;
 
 
-pub trait Driver <C: Connection<P> + Copy, P: ConnectionParams + Hash> {
+pub trait Driver <C: Connection<P> + Copy, P: ConnectionParams + Hash + Clone> {
     fn get_name(self) -> String;
 
     fn make_stash(&self) -> Box<ConnectionStash<C, P>> {

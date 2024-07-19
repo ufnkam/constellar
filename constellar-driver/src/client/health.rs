@@ -1,14 +1,5 @@
-pub mod cdriver {
-    tonic::include_proto!("cdriver");
-}
-use cdriver::c_driver_client::CDriverClient;
-use cdriver::HealthCheckResponse;
-
-
-struct Client {}
-
-impl Client {}
-
+use crate::client::CDriverClient;
+use crate::client::HealthCheckResponse;
 
 pub async fn health_check(
     client: &mut CDriverClient<tonic::transport::Channel>,

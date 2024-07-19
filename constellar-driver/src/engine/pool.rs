@@ -7,13 +7,13 @@ use crate::engine::connection::Connection;
 
 use super::connection::ConnectionParams;
 
-pub struct ConnectionPool<C: Connection<P>, P: ConnectionParams + Hash> {
+pub struct ConnectionPool<C: Connection<P>, P: ConnectionParams + Hash + Clone> {
     connections: VecDeque<C>,
     wait_timeout: i32,
     connection_params: P,
     max_size: i32,
 }
-impl<C: Connection<P>, P: ConnectionParams + Hash> ConnectionPool<C, P> {
+impl<C: Connection<P>, P: ConnectionParams + Hash + Clone> ConnectionPool<C, P> {
     pub fn new(max_size: i32, wait_timeout: i32, connection_params: P) -> Self {
         let mut connections = VecDeque::new();
         return ConnectionPool {
@@ -24,11 +24,11 @@ impl<C: Connection<P>, P: ConnectionParams + Hash> ConnectionPool<C, P> {
         };
     }
 
-    pub fn open(&mut self) {
-        for _ in 0..(self.max_size - 1) {
-            let conn = Connection::connect(&self.connection_params);
-            self.connections.push_back(conn);
+    pub async fn open(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        for _ in 0..self.max_size {
+            C::connect(self.connection_params.clone()).await?;
         }
+        Ok(())
     }
 
     pub fn get_conn(&mut self) -> C {

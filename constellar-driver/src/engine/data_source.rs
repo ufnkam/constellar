@@ -7,7 +7,7 @@ use super::{
 };
 use crate::engine::access::AccessToken;
 
-pub struct DriverNativeDataSource<P: ConnectionParams + Hash, C: Connection<P> + Copy> {
+pub struct DriverNativeDataSource<P: ConnectionParams + Hash + Clone, C: Connection<P> + Copy> {
     host: &'static str,
     resource: &'static str,
     pool: ConnectionPool<C, P>,
@@ -15,7 +15,7 @@ pub struct DriverNativeDataSource<P: ConnectionParams + Hash, C: Connection<P> +
     name: &'static str,
 }
 
-impl<P: ConnectionParams + Hash, C: Connection<P> + Copy> DriverNativeDataSource<P, C> {
+impl<P: ConnectionParams + Hash + Clone, C: Connection<P> + Copy> DriverNativeDataSource<P, C> {
     pub fn new(
         connection_params: P,
         name: Option<&'static str>,
