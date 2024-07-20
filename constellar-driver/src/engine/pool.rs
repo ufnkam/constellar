@@ -2,19 +2,20 @@ use std::collections::VecDeque;
 use std::hash::Hash;
 use std::thread::sleep;
 use std::time::Duration;
+use crate::engine::Backend;
 
 use crate::engine::connection::Connection;
 
 use super::connection::ConnectionParams;
 
-pub struct ConnectionPool<C: Connection<P>, P: ConnectionParams + Hash + Clone> {
-    connections: VecDeque<C>,
+pub struct ConnectionPool<B: Backend> {
+    connections: VecDeque<B::Connection>,
     wait_timeout: i32,
-    connection_params: P,
+    connection_params: B::ConnectionParams,
     max_size: i32,
 }
-impl<C: Connection<P>, P: ConnectionParams + Hash + Clone> ConnectionPool<C, P> {
-    pub fn new(max_size: i32, wait_timeout: i32, connection_params: P) -> Self {
+impl<B: Backend> ConnectionPool<B> {
+    pub fn new(max_size: i32, wait_timeout: i32, connection_params: B::ConnectionParams) -> Self {
         let mut connections = VecDeque::new();
         return ConnectionPool {
             connections,
@@ -26,12 +27,12 @@ impl<C: Connection<P>, P: ConnectionParams + Hash + Clone> ConnectionPool<C, P> 
 
     pub async fn open(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         for _ in 0..self.max_size {
-            C::connect(self.connection_params.clone()).await?;
+            B::Connection::connect(self.connection_params.clone()).await?;
         }
         Ok(())
     }
 
-    pub fn get_conn(&mut self) -> C {
+    pub fn get_conn(&mut self) -> B::Connection {
         let mut total_sleep_counter = 0;
         while self.connections.is_empty() {
             sleep(Duration::new(1, 0));
@@ -47,7 +48,7 @@ impl<C: Connection<P>, P: ConnectionParams + Hash + Clone> ConnectionPool<C, P> 
         }
     }
 
-    pub fn put_conn(&mut self, connection: C) {
-        self.connections.push_back(connection);
+    pub fn put_conn(&mut self, connection: B::Connection) {
+        self.connections.push_front(connection);
     }
 }

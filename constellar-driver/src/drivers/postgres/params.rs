@@ -1,5 +1,5 @@
 use std::hash::{Hash, Hasher};
-use crate::engine::connection::ConnectionParams;
+use crate::engine::ConnectionParams;
 
 #[derive(Clone)]
 pub struct PgConnectionParams {
@@ -8,7 +8,7 @@ pub struct PgConnectionParams {
     pub dbname: &'static str,
     pub host: &'static str,
     pub port: &'static str,
-    pub allow_prepared_statements: Option<bool>
+    pub prepared_threshold: i32
 }
 
 impl ConnectionParams for PgConnectionParams {
@@ -26,7 +26,7 @@ impl ConnectionParams for PgConnectionParams {
             dbname: "postgres",
             host: "localhost",
             port: "9999",
-            allow_prepared_statements: Some(true)
+            prepared_threshold: 5
         };
     }
 

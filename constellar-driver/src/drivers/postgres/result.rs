@@ -1,6 +1,6 @@
 use std::any::Any;
 use std::error::Error;
-use crate::engine::result::DbResult;
+use crate::engine::DbResult;
 
 #[derive(Debug)]
 pub struct PgResultWrapper {
@@ -25,9 +25,9 @@ impl DbResult for PgResultWrapper {
         return self.row_count;
     }
 
-    fn dispose(&mut self) -> Result<(), Box<dyn Error>> {
+    fn dispose(&self) -> Result<(), Box<dyn Error>> {
         unsafe {
-            libpq_sys::PQclear(self.result)
+            libpq_sys::PQclear(self.result);
         }
         Ok(())
     }

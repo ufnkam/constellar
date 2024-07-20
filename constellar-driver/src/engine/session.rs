@@ -1,4 +1,5 @@
 use std::hash::Hash;
+use crate::engine::Backend;
 
 use crate::engine::pool::ConnectionPool;
 
@@ -10,14 +11,14 @@ enum SessionState {
     Inactive,
 }
 
-pub struct Session<'a, C: Connection<P> + Copy, P: ConnectionParams + Hash + Clone> {
-    pool: &'a mut ConnectionPool<C, P>,
+pub struct Session<'a, B: Backend> {
+    pool: &'a mut ConnectionPool<B>,
     state: SessionState,
-    pub connection: Option<C>,
+    pub connection: Option<B::Connection>,
 }
 
-impl<'a, C: Connection<P> + Copy, P: ConnectionParams + Hash + Clone> Session<'a, C, P> {
-    pub fn new(pool: &'a mut ConnectionPool<C, P>) -> Self {
+impl<'a, B: Backend> Session<'a, B> {
+    pub fn new(pool: &'a mut ConnectionPool<B>) -> Self {
         return Self {
             pool: pool,
             state: SessionState::Inactive,
@@ -30,12 +31,17 @@ impl<'a, C: Connection<P> + Copy, P: ConnectionParams + Hash + Clone> Session<'a
         self.state = SessionState::Active;
     }
 
+    pub fn set_state(&mut self, state: SessionState) {
+        self.state = state;
+    }
+
     pub fn close(&mut self) {
-        // self.connection.close();
-        if self.state == SessionState::Active && self.connection.is_some() {
-            let conn = self.connection.unwrap();
-            self.pool.put_conn(conn);
-            self.state = SessionState::Inactive;
+        let conn = self.connection.clone().unwrap_or_else(|| panic!("connection not found"));
+        if self.state != SessionState::Active {
+            panic!("Session is not active");
         }
+        // self.connection.close();
+        self.pool.put_conn(conn);
+        &self.set_state(SessionState::Inactive);
     }
 }

@@ -2,9 +2,8 @@ pub mod cdriver {
     tonic::include_proto!("cdriver");
 }
 
-use super::engine::stash::ConnectionStash;
 use crate::driver::Driver;
-use crate::engine::connection::{Connection, ConnectionParams};
+use crate::engine::{Backend, Connection, ConnectionParams, ConnectionStash};
 use crate::server::cdriver::HealthCheckResponse;
 use cdriver::c_driver_server::{CDriver, CDriverServer};
 use std::env;
@@ -26,12 +25,12 @@ impl CDriver for CDriverService {
     }
 }
 
-pub struct DriverServer<D: Driver<C, P>, C: Connection<P> + Copy, P: ConnectionParams + Hash + Clone> {
+pub struct DriverServer<B: Backend, D: Driver<B>> {
     driver: D,
-    stash: Box<ConnectionStash<C, P>>,
+    stash: Box<ConnectionStash<B>>,
 }
 
-impl<D: Driver<C, P>, C: Connection<P> + Copy, P: ConnectionParams + Hash + Clone> DriverServer <D, C, P> {
+impl<B: Backend, D: Driver<B>> DriverServer <B, D> {
     pub fn new(driver: D) -> Self {
         let stash = driver.make_stash();
         return DriverServer { driver, stash };

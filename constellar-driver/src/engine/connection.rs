@@ -1,3 +1,4 @@
+use crate::engine::Backend;
 use crate::engine::result::DbResult;
 use crate::engine::typing::ToSql;
 
@@ -7,11 +8,12 @@ pub trait ConnectionParams {
     fn get_backend(&self) -> &'static str;
     fn get_resource(&self) -> &'static str;
     fn get_host(&self) -> &'static str;
+
 }
 
-pub trait Connection<P: ConnectionParams + Clone>: Sized {
-    async fn connect(params: P) -> Result<Self, Box<dyn std::error::Error>>;
-    async fn execute<R: DbResult + Sized>(&mut self, query: &str) -> Result<R, Box<dyn std::error::Error>>;
+pub trait Connection<B: Backend>: Sized {
+    async fn connect(params: B::ConnectionParams) -> Result<Self, Box<dyn std::error::Error>>;
+    async fn execute(&mut self, query: &str) -> Result<B::DbResult, Box<dyn std::error::Error>>;
     async fn close(&mut self) -> Result<(), Box<dyn std::error::Error>>;
 
     async fn cancel(&mut self) -> Result<(), Box<dyn std::error::Error>>;

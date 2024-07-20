@@ -2,7 +2,7 @@ use std::error::Error;
 use std::ffi::{c_char, CString};
 use std::ptr::null;
 use libpq_sys::PGconn;
-use crate::engine::result::DbResult;
+use crate::engine::DbResult;
 
 pub trait Executor {
     unsafe fn execute<R: DbResult + Sized>(

@@ -1,50 +1,49 @@
 use std::error::Error;
-use crate::engine::connection::{Connection, ConnectionParams, ConnectionStatus};
-use crate::engine::result::{DbResult};
-use crate::engine::typing::{FromSql, ToSql};
+use crate::engine::{Connection, ConnectionParams, ConnectionStatus, DbResult, ConnectionPool};
 use std::ffi::{c_char, CString};
-use libpq_sys::PGcancel;
 use crate::drivers::postgres::params::PgConnectionParams;
 use crate::drivers::postgres::executor::{ PGStatementExecutor, Executor };
-use crate::drivers::postgres::PGPreparedStatementExecutor;
+use crate::drivers::postgres::{PgBackend, PGPreparedStatementExecutor, PgResultWrapper};
 
-
-struct PgConnection {
+#[derive(Clone)]
+pub struct PgConnection {
     conn: *mut libpq_sys::PGconn,
     status: ConnectionStatus,
     connection_params: PgConnectionParams,
+    prepared_cache: i32
 }
 
-impl Connection<PgConnectionParams> for PgConnection {
+impl Connection<PgBackend> for PgConnection {
     async fn connect(params: PgConnectionParams) -> Result<Self, Box<dyn std::error::Error>> {
         let internal_conn = unsafe { libpq_sys::PQconnectdb(CString::new(params.uri())?.as_ptr()) };
         let conn = Self {
             conn: internal_conn,
             status: ConnectionStatus::Connected,
             connection_params: params,
+            prepared_cache: 0
         };
         Ok(conn)
     }
 
-    async fn execute<R: DbResult + Sized>(
+    async fn execute(
         &mut self,
         query: &str,
-    ) -> Result<R, Box<dyn std::error::Error>> {
+    ) -> Result<PgResultWrapper, Box<dyn std::error::Error>> {
         if self.status != ConnectionStatus::Connected {
             panic!("Not connected");
         }
 
-        let prepare = self
-            .connection_params
-            .allow_prepared_statements
-            .unwrap_or(true);
+        let prepare = match self.connection_params.prepared_threshold {
+             count if count > 0  => true,
+            _ => false,
+        };
         let c_query = unsafe { CString::new(query).unwrap() };
 
         if prepare {
-            let res:R = unsafe { PGPreparedStatementExecutor::execute(self.conn, c_query.as_ptr())? };
+            let res = unsafe { PGPreparedStatementExecutor::execute(self.conn, c_query.as_ptr())? };
             Ok(res)
         } else {
-            let res:R = unsafe { PGStatementExecutor::execute(self.conn, c_query.as_ptr())? };
+            let res = unsafe { PGStatementExecutor::execute(self.conn, c_query.as_ptr())? };
             Ok(res)
         }
     }
@@ -71,8 +70,9 @@ impl Connection<PgConnectionParams> for PgConnection {
 mod test {
     use crate::drivers::postgres::connection::PgConnection;
     use crate::drivers::postgres::params::PgConnectionParams;
+    use crate::drivers::postgres::PgBackend;
     use crate::drivers::postgres::result::PgResultWrapper;
-    use crate::engine::connection::Connection;
+    use crate::engine::{Connection, ConnectionPool, DbResult};
 
     fn mock_params() -> PgConnectionParams {
         return PgConnectionParams {
@@ -81,7 +81,7 @@ mod test {
             dbname: &"postgres",
             host: &"localhost",
             port: &"9999",
-            allow_prepared_statements: Some(true),
+            prepared_threshold: 5,
         };
     }
 
@@ -97,21 +97,21 @@ mod test {
         let mut conn = PgConnection::connect(mock_params()).await?;
         let query = "select 1;";
         let params: Vec<i32> = Vec::new();
-        let xd: PgResultWrapper = conn.execute(query).await?;
-        conn.close();
-        println!("RESULT={:?}", unsafe{ libpq_sys::PQgetvalue(xd.result, 0,0 )});
+        let res: PgResultWrapper = conn.execute(query).await?;
+        conn.close().await?;
+        println!("RESULT={:?}", unsafe{ libpq_sys::PQgetvalue(res.result, 0,0 )});
+        res.dispose()?;
         Ok(())
     }
 
-    // #[test]
-    // fn test_pool() -> Result<(), Box<dyn std::error::Error>> {
-    //     let mut pool: ConnectionPool<PgConnection, PgConnectionParams> = ConnectionPool::new(3, 30, mock_params());
-    //     pool.open()?;
-    //     let mut sample_conn = pool.get_conn();
-    //     sleep(Duration::new(10, 0));
-    //     sample_conn.close()?;
-    //     Ok(())
-    // }
+    #[tokio::test]
+    async fn test_pool() -> Result<(), Box<dyn std::error::Error>> {
+        let mut pool: ConnectionPool<PgBackend> = ConnectionPool::new(3, 30, mock_params());
+        pool.open();
+        let mut sample_conn: PgConnection = pool.get_conn();
+        sample_conn.close();
+        Ok(())
+    }
 
     #[test]
     fn test_session() {}

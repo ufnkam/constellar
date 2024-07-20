@@ -1,23 +1,19 @@
 use std::hash::Hash;
 
-use super::{
-    connection::{Connection, ConnectionParams},
-    pool::ConnectionPool,
-    session::Session,
-};
+use super::{Backend, connection::{Connection, ConnectionParams}, pool::ConnectionPool, session::Session};
 use crate::engine::access::AccessToken;
 
-pub struct DriverNativeDataSource<P: ConnectionParams + Hash + Clone, C: Connection<P> + Copy> {
+pub struct DriverNativeDataSource<B: Backend> {
     host: &'static str,
     resource: &'static str,
-    pool: ConnectionPool<C, P>,
+    pool: ConnectionPool<B>,
     access_token: AccessToken,
     name: &'static str,
 }
 
-impl<P: ConnectionParams + Hash + Clone, C: Connection<P> + Copy> DriverNativeDataSource<P, C> {
+impl<B: Backend> DriverNativeDataSource<B> {
     pub fn new(
-        connection_params: P,
+        connection_params: B::ConnectionParams,
         name: Option<&'static str>,
         max_size: i32,
         wait_timeout: i32,
@@ -43,7 +39,7 @@ impl<P: ConnectionParams + Hash + Clone, C: Connection<P> + Copy> DriverNativeDa
         self.pool.open();
     }
 
-    pub fn obtain_session(&mut self) -> Session<C, P> {
+    pub fn obtain_session(&mut self) -> Session<B> {
         let pool = &mut self.pool;
         return Session::new(pool);
     }
