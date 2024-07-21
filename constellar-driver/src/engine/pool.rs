@@ -9,7 +9,7 @@ use crate::engine::connection::Connection;
 use super::connection::ConnectionParams;
 
 pub struct ConnectionPool<B: Backend> {
-    connections: VecDeque<B::Connection>,
+    pub connections: VecDeque<B::Connection>,
     wait_timeout: i32,
     connection_params: B::ConnectionParams,
     max_size: i32,
@@ -27,7 +27,8 @@ impl<B: Backend> ConnectionPool<B> {
 
     pub async fn open(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         for _ in 0..self.max_size {
-            B::Connection::connect(self.connection_params.clone()).await?;
+            let conn = B::Connection::connect(self.connection_params.clone()).await?;
+            self.connections.push_front(conn)
         }
         Ok(())
     }
@@ -50,5 +51,12 @@ impl<B: Backend> ConnectionPool<B> {
 
     pub fn put_conn(&mut self, connection: B::Connection) {
         self.connections.push_front(connection);
+    }
+
+    pub async fn close(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        for mut conn in &mut self.connections {
+            conn.close().await?;
+        }
+        Ok(())
     }
 }
