@@ -1,1 +1,3 @@
-pub struct Cursor {}
+// trait Cursor {
+//     fn fetch_all(self) -> Vec<>;
+// }

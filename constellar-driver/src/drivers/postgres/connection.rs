@@ -1,9 +1,11 @@
-use crate::drivers::postgres::executor::{Executor, PGStatementExecutor};
 use crate::drivers::postgres::params::PgConnectionParams;
-use crate::drivers::postgres::{PGPreparedStatementExecutor, PgBackend, PgResultWrapper};
-use crate::engine::{Connection, ConnectionParams, ConnectionPool, ConnectionStatus, DbResult};
+use crate::drivers::postgres::{statement_exec, PgBackend, PgResultWrapper, PreparedStatement};
+use crate::engine::{
+    Backend, Connection, ConnectionParams, ConnectionPool, ConnectionStatus, DbResult, ToSql,
+};
 use std::error::Error;
-use std::ffi::{c_char, CString};
+use std::ffi::{c_char, CStr, CString};
+use std::string::String;
 
 #[derive(Clone)]
 pub struct PgConnection {
@@ -16,6 +18,16 @@ pub struct PgConnection {
 impl Connection<PgBackend> for PgConnection {
     async fn connect(params: PgConnectionParams) -> Result<Self, Box<dyn std::error::Error>> {
         let internal_conn = unsafe { libpq_sys::PQconnectdb(CString::new(params.uri())?.as_ptr()) };
+        let status = unsafe { libpq_sys::PQstatus(internal_conn) };
+
+        match status {
+            libpq_sys::ConnStatusType::CONNECTION_BAD => {
+                let err_msg =
+                    unsafe { CStr::from_ptr(libpq_sys::PQerrorMessage(internal_conn)).to_str()? };
+                panic!("Connection failed: {}", err_msg);
+            }
+            _ => {}
+        }
         let conn = Self {
             conn: internal_conn,
             status: ConnectionStatus::Connected,
@@ -28,23 +40,30 @@ impl Connection<PgBackend> for PgConnection {
     async fn execute(
         &mut self,
         query: &str,
+        params: &[&(dyn ToSql<PgBackend>)],
     ) -> Result<PgResultWrapper, Box<dyn std::error::Error>> {
-        if self.status != ConnectionStatus::Connected {
-            panic!("Not connected");
-        }
+        unsafe {
+            if self.status != ConnectionStatus::Connected {
+                panic!("Not connected");
+            }
 
-        let prepare = match self.connection_params.prepared_threshold {
-            count if count > 0 => true,
-            _ => false,
-        };
-        let c_query = unsafe { CString::new(query).unwrap() };
+            let prepare = match self.connection_params.prepared_threshold {
+                count if count > 0 => true,
+                _ => false,
+            };
+            let c_query = CString::new(query).unwrap();
 
-        if prepare {
-            let res = unsafe { PGPreparedStatementExecutor::execute(self.conn, c_query.as_ptr())? };
-            Ok(res)
-        } else {
-            let res = unsafe { PGStatementExecutor::execute(self.conn, c_query.as_ptr())? };
-            Ok(res)
+            if prepare {
+                let mut prepared =
+                    PreparedStatement::new(self.conn, c_query.as_ptr(), &mut self.prepared_cache);
+                prepared.allocate(&params)?;
+                let res = prepared.execute(&params)?;
+                prepared.deallocate()?;
+                Ok(res)
+            } else {
+                let res = statement_exec(self.conn, c_query.as_ptr())?;
+                Ok(res)
+            }
         }
     }
 
@@ -71,7 +90,7 @@ mod test {
     use crate::drivers::postgres::params::PgConnectionParams;
     use crate::drivers::postgres::result::PgResultWrapper;
     use crate::drivers::postgres::PgBackend;
-    use crate::engine::{Connection, ConnectionPool, DbResult};
+    use crate::engine::{Backend, Connection, ConnectionPool, DbResult, ToSql};
 
     fn mock_params() -> PgConnectionParams {
         return PgConnectionParams {
@@ -82,6 +101,30 @@ mod test {
             port: &"9999",
             prepared_threshold: 5,
         };
+    }
+
+    async fn mock_table(
+        conn: &mut PgConnection,
+    ) -> Result<PgResultWrapper, Box<dyn std::error::Error>> {
+        let mut query = "drop table if exists test_table cascade;";
+        _ = conn.execute(query, &[]).await?;
+        query = "create table test_table (id serial primary key, name text);";
+
+        let res = conn.execute(query, &[]).await?;
+        query = "insert into test_table (name) values ($1), ($2);";
+
+        let int_param: i32 = 1;
+        let res = conn.execute(query, &[&"xd".to_string(), &"Lol".to_string()]).await?;
+        assert_eq!(res.affected, 2);
+        Ok(res)
+    }
+
+    async fn clean_mock_table<B: Backend>(
+        conn: &mut B::Connection,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let query = "drop table test_table;";
+        conn.execute(query, &Vec::new()).await?;
+        Ok(())
     }
 
     #[tokio::test]
@@ -95,13 +138,25 @@ mod test {
     async fn test_execute() -> Result<(), Box<dyn std::error::Error>> {
         let mut conn = PgConnection::connect(mock_params()).await?;
         let query = "select 1;";
-        let params: Vec<i32> = Vec::new();
-        let res: PgResultWrapper = conn.execute(query).await?;
+        let res: PgResultWrapper = conn.execute(query, &[]).await?;
         conn.close().await?;
-        println!("RESULT={:?}", unsafe {
-            libpq_sys::PQgetvalue(res.result, 0, 0)
-        });
+        assert_eq!(res.row_count, 1);
+        assert_eq!(res.column_count, 1);
         res.dispose()?;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_results() -> Result<(), Box<dyn std::error::Error>> {
+        let mut conn = PgConnection::connect(mock_params()).await?;
+        let res = mock_table(&mut conn).await?;
+        println!(
+            "{:?}, {:?}, {:?}",
+            res.column_count, res.row_count, res.affected
+        );
+        res.dispose()?;
+        clean_mock_table::<PgBackend>(&mut conn).await?;
+        conn.close().await?;
         Ok(())
     }
 

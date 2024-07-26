@@ -1,5 +1,5 @@
 use crate::drivers::postgres::{PgConnection, PgConnectionParams, PgResultWrapper};
-use crate::engine::Backend;
+use crate::engine::{Backend, ToSql};
 
 pub struct PgBackend {}
 
