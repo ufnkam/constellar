@@ -1,32 +1,36 @@
 use std::hash::Hash;
-use crate::engine::Backend;
 
 use super::access::AccessToken;
-use super::connection::{Connection, ConnectionParams};
+use super::connection::{ConnectionParams};
 use super::data_source::DriverNativeDataSource;
 
-pub struct ConnectionStash<B: Backend> {
-    stash: Vec<DriverNativeDataSource<B>>,
+pub struct ConnectionStash {
+    stash: Vec<DriverNativeDataSource>,
 }
 
-impl<B: Backend> ConnectionStash<B> {
+impl ConnectionStash {
     pub fn new() -> Self {
         let stash = Vec::new();
-        return ConnectionStash { stash };
+        ConnectionStash { stash }
     }
 
-    pub fn get_data_source(&self, access_token: &AccessToken) -> Option<&DriverNativeDataSource<B>> {
+    pub fn get_data_source(&self, access_token: &AccessToken) -> Option<&DriverNativeDataSource> {
         for dnds in self.stash.iter() {
             if dnds.verify_access(access_token) {
                 return Some(dnds);
             }
         }
-        return None;
+        None
     }
 
-    pub fn create_data_source(&mut self, params: B::ConnectionParams, wait_timeout: i32, max_size: i32, name: Option<&'static str>) {
-        let dnds = DriverNativeDataSource::new(params, name, max_size, wait_timeout);
+    pub fn create_data_source(
+        &mut self,
+        params: ConnectionParams,
+        name: Option<&'static str>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let dnds = DriverNativeDataSource::new(params, name)?;
         self.stash.push(dnds);
+        Ok(())
     }
 
     pub fn connect_data_source(&mut self) {}

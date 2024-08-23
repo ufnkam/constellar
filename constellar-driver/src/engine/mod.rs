@@ -1,18 +1,12 @@
 mod access;
 mod backend;
 mod connection;
-mod cursor;
-mod data_source;
-mod pool;
-mod result;
-mod session;
 mod stash;
-mod typing;
+mod data_source;
+mod query;
 
-pub use access::AccessToken;
-pub use backend::Backend;
-pub use connection::{Connection, ConnectionParams, ConnectionStatus};
-pub use pool::ConnectionPool;
-pub use result::DbResult;
+pub use data_source::DriverNativeDataSource;
 pub use stash::ConnectionStash;
-pub use typing::{FromSql, ToSql};
+pub use access::AccessToken;
+pub use query::Query;
+pub use connection::{Connection, ConnectionParams, ConnectionStatus};

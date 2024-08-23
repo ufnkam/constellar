@@ -1,50 +1,38 @@
+use crate::engine::{AccessToken, ConnectionParams};
 use std::hash::Hash;
 
-use super::{Backend, connection::{Connection, ConnectionParams}, pool::ConnectionPool, session::Session};
-use crate::engine::access::AccessToken;
-
-pub struct DriverNativeDataSource<B: Backend> {
+pub struct DriverNativeDataSource {
     host: &'static str,
     resource: &'static str,
-    pool: ConnectionPool<B>,
     access_token: AccessToken,
-    name: &'static str,
+    name: String,
 }
 
-impl<B: Backend> DriverNativeDataSource<B> {
+impl DriverNativeDataSource {
     pub fn new(
-        connection_params: B::ConnectionParams,
-        name: Option<&'static str>,
-        max_size: i32,
-        wait_timeout: i32,
-    ) -> Self {
-        let host = connection_params.get_host();
-        let backend = connection_params.get_backend();
-        let access_token = AccessToken::new(&connection_params);
-        let name = match name {
-            Some(n) => n,
-            None => host,
+        connection_params: ConnectionParams,
+        name: Option<&str>,
+    ) -> Result<Self, Box<dyn std::error::Error>> {
+        let access_token = AccessToken::new(&connection_params)?;
+
+        let source_name = match name {
+            Some(name) => name.to_string(),
+            None => format!("{}@{}", connection_params.host, connection_params.database)
         };
-        let pool = ConnectionPool::new(max_size, wait_timeout, connection_params);
-        return Self {
-            pool,
-            host,
-            resource: backend,
+
+        Ok(Self {
+            host: connection_params.host,
+            resource: connection_params.database,
             access_token,
-            name,
-        };
+            name: source_name,
+        })
     }
 
     pub fn connect(&mut self) {
-        self.pool.open();
-    }
-
-    pub fn obtain_session(&mut self) -> Session<B> {
-        let pool = &mut self.pool;
-        return Session::new(pool);
+        todo!()
     }
 
     pub fn verify_access(&self, access_token: &AccessToken) -> bool {
-        return self.access_token == *access_token;
+        &self.access_token == access_token
     }
 }

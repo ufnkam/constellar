@@ -2,7 +2,7 @@ use std::hash::Hash;
 
 use clap::{Arg, Command};
 use constellar_driver::driver::Driver;
-use constellar_driver::engine::connection::{Connection, ConnectionParams};
+use constellar_driver::engine::{Connection, ConnectionParams};
 use constellar_driver::server::DriverServer;
 use crate::cmd::health::health;
 
