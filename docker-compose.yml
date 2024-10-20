@@ -16,10 +16,15 @@ services:
       PGDATABASE: postgres
     ports:
       - "9999:5432"
+    deploy:
+      resources:
+        limits:
+          memory: 4096M
+        reservations:
+          memory: 2048M
       
     volumes:
       - postgres_data:/var/lib/postgresql/data/
-      - ./docker-entrypoint-initdb.d/init.sql:/docker-entrypoint-initdb.d/init.sql
       - .:/code
     privileged:
       true
