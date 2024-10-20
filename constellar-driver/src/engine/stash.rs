@@ -1,11 +1,10 @@
-use std::hash::Hash;
-
 use super::access::AccessToken;
-use super::connection::{ConnectionParams};
+use super::connection::ConnectionParams;
 use super::data_source::DriverNativeDataSource;
+use std::io::ErrorKind;
 
 pub struct ConnectionStash {
-    stash: Vec<DriverNativeDataSource>,
+    pub stash: Vec<DriverNativeDataSource>,
 }
 
 impl ConnectionStash {
@@ -14,23 +13,31 @@ impl ConnectionStash {
         ConnectionStash { stash }
     }
 
-    pub fn get_data_source(&self, access_token: &AccessToken) -> Option<&DriverNativeDataSource> {
+    pub fn get_data_source(
+        &self,
+        name: &str,
+        access_token: &AccessToken,
+    ) -> Result<&DriverNativeDataSource, std::io::Error> {
         for dnds in self.stash.iter() {
-            if dnds.verify_access(access_token) {
-                return Some(dnds);
+            if dnds.name == name {
+                return Ok(dnds);
             }
         }
-        None
+        Err(std::io::Error::new(
+            ErrorKind::InvalidInput,
+            "data source not found",
+        ))
     }
 
     pub fn create_data_source(
         &mut self,
         params: ConnectionParams,
         name: Option<&'static str>,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let dnds = DriverNativeDataSource::new(params, name)?;
+    ) -> Result<(AccessToken, String), Box<dyn std::error::Error>> {
+        let (dnds, token) = DriverNativeDataSource::new(params, name)?;
+        let name = dnds.get_name();
         self.stash.push(dnds);
-        Ok(())
+        Ok((token, name))
     }
 
     pub fn connect_data_source(&mut self) {}

@@ -1,31 +1,28 @@
 use crate::engine::Query;
-use arrow_odbc::odbc_api::{
-    Connection as OdbcConnection, ConnectionOptions, Environment, ResultSetMetadata,
-};
+use crate::grpc::cdriver::ConnectionInfo;
+use arrow_odbc::odbc_api::{Connection as OdbcConnection, ConnectionOptions, Environment};
 use arrow_odbc::OdbcReaderBuilder;
 use std::hash::{Hash, Hasher};
-use std::task::Wake;
-use tonic::transport::server::Connected;
 
 pub struct ConnectionParams {
-    pub driver: &'static str,
-    pub host: &'static str,
-    pub port: &'static u32,
-    pub user: &'static str,
-    pub password: &'static str,
-    pub database: &'static str,
-    pub application_name: Option<&'static str>,
+    pub driver: String,
+    pub host: String,
+    pub port: u64,
+    pub user: String,
+    pub password: String,
+    pub database: String,
+    pub application_name: Option<String>,
 }
 
 impl ConnectionParams {
     pub fn new(
-        driver: &'static str,
-        host: &'static str,
-        port: &'static u32,
-        user: &'static str,
-        password: &'static str,
-        database: &'static str,
-        application_name: Option<&'static str>,
+        driver: String,
+        host: String,
+        port: u64,
+        user: String,
+        password: String,
+        database: String,
+        application_name: Option<String>,
     ) -> Self {
         ConnectionParams {
             driver,
@@ -66,6 +63,34 @@ impl Hash for ConnectionParams {
     }
 }
 
+impl From<ConnectionInfo> for ConnectionParams {
+    fn from(value: ConnectionInfo) -> Self {
+        ConnectionParams {
+            driver: value.driver,
+            host: value.host,
+            port: value.port,
+            user: value.user,
+            password: value.password,
+            database: value.database,
+            application_name: None,
+        }
+    }
+}
+
+impl From<&ConnectionInfo> for ConnectionParams {
+    fn from(value: &ConnectionInfo) -> Self {
+        ConnectionParams {
+            driver: value.driver.clone(),
+            host: value.host.clone(),
+            port: value.port,
+            user: value.user.clone(),
+            password: value.password.clone(),
+            database: value.database.clone(),
+            application_name: None,
+        }
+    }
+}
+
 pub struct Connection {
     params: ConnectionParams,
     odbc_environment: Environment,
@@ -82,10 +107,7 @@ impl Connection {
     }
 
     pub fn ping(&mut self) -> Result<u128, Box<dyn std::error::Error>> {
-        let query = Query {
-            query: "select now();",
-            params: (),
-        };
+        let query = Query::new("select now();".to_string(), ());
         let start_time = std::time::Instant::now();
         let _ = self.execute(&query)?;
         let finish_time = std::time::Instant::now() - start_time;
@@ -93,15 +115,16 @@ impl Connection {
     }
 
     pub fn execute(
-        &mut self,
+        &self,
         query: &Query,
     ) -> Result<Vec<arrow::array::RecordBatch>, Box<dyn std::error::Error>> {
-        let mut conn = self.odbc_environment.connect_with_connection_string(
+        println!("{:?}", &query.query);
+        let conn = self.odbc_environment.connect_with_connection_string(
             &self.params.into_odbc_string(),
             ConnectionOptions::default(),
         )?;
-        self.status = ConnectionStatus::Connected;
-        let cursor = conn.execute(query.query, query.params)?.unwrap();
+        // self.status = ConnectionStatus::Connected;
+        let cursor = conn.execute(&query.query, query.params)?.unwrap();
 
         let arrays = OdbcReaderBuilder::new().build(cursor)?;
         let mut batches = Vec::new();
@@ -110,7 +133,9 @@ impl Connection {
         }
 
         std::mem::drop(conn);
-        self.status = ConnectionStatus::Closed;
+
+        println!("{:?}", batches.len());
+        // self.status = ConnectionStatus::Closed;
         Ok(batches)
     }
 }
@@ -130,35 +155,31 @@ mod tests {
     #[test]
     fn test_connection() -> Result<(), Box<dyn std::error::Error>> {
         let params = ConnectionParams::new(
-            "PostgreSQL",
-            "localhost",
-            &9999,
-            "postgres_user",
-            "postgres_password",
-            "postgres",
+            "PostgreSQL".to_string(),
+            "localhost".to_string(),
+            9999,
+            "postgres_user".to_string(),
+            "postgres_password".to_string(),
+            "postgres".to_string(),
             None,
         );
 
         let mut connection = Connection::new(params)?;
-        let query = Query {
-            query: "select 1 as some, 2 as elsesome;",
-            // query: "SELECT * FROM shopping where client_id = ? and channel = ?;",
-            params: (),
-        };
+        let query = Query::new("select 1 as some, 2 as elsesome".to_string(), ());
         let res = connection.execute(&query)?;
-
+        assert_eq!(res[0].num_rows(), 1);
         Ok(())
     }
 
     #[test]
     fn test_ping() -> Result<(), Box<dyn std::error::Error>> {
         let params = ConnectionParams::new(
-            "PostgreSQL",
-            "localhost",
-            &9999,
-            "postgres_user",
-            "postgres_password",
-            "postgres",
+            "PostgreSQL".to_string(),
+            "localhost".to_string(),
+            "9999".parse().expect("not a number"),
+            "postgres_user".to_string(),
+            "postgres_password".to_string(),
+            "postgres".to_string(),
             None,
         );
 

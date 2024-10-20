@@ -1,0 +1,19 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "codelldb",
+            "request": "launch",
+            "name": "Access",
+            "program": "${workspaceRoot}/target/debug/${workspaceRootFolderName}",
+            "args": [],
+            "cwd": "${workspaceRoot}",
+            "sourceLanguages": [
+                "rust"
+            ],
+            "cargo": {
+                "args": ["build", "--manifest-path", "${fileDirname}/../Cargo.toml"]
+            }
+        }
+    ]
+}

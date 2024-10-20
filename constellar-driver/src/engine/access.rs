@@ -1,6 +1,7 @@
 use crate::engine::ConnectionParams;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
+#[derive(Clone, Copy)]
 pub struct AccessToken {
     hash: u64,
 }
@@ -30,6 +31,25 @@ impl PartialEq for AccessToken {
     }
 }
 
+impl Into<u64> for AccessToken {
+    fn into(self) -> u64 {
+        self.hash
+    }
+}
+impl Into<u64> for &AccessToken {
+    fn into(self) -> u64 {
+        self.hash
+    }
+}
+
+impl From<&u64> for AccessToken {
+    fn from(value: &u64) -> Self {
+        Self {
+            hash: value.clone(),
+        }
+    }
+}
+
 #[cfg(test)]
 pub mod tests {
     use super::*;
@@ -38,12 +58,12 @@ pub mod tests {
     #[test]
     fn test_token() -> Result<(), Box<dyn std::error::Error>> {
         let params = ConnectionParams::new(
-            "PostgreSQL",
-            "localhost",
-            &9999,
-            "postgres_user",
-            "postgres_password",
-            "postgres",
+            "PostgreSQL".to_string(),
+            "localhost".to_string(),
+            "9999".parse().expect("not a number"),
+            "postgres_user".to_string(),
+            "postgres_password".to_string(),
+            "postgres".to_string(),
             None,
         );
 

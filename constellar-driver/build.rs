@@ -1,4 +1,6 @@
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    tonic_build::compile_protos("src/driver.proto")?;
+    tonic_build::configure()
+        .out_dir("./src/grpc")
+        .compile(&["src/grpc/driver.proto"], &["."])?;
     Ok(())
 }

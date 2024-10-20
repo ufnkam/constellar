@@ -1,0 +1,2 @@
+grpcurl -plaintext -d {driver: PostgreSQL, host: localhost, port: 9999, user: postgres_user, password: postgres_password, database: postgres} -proto src/grpc/driver.proto localhost:9999 cdriver.CDriver/CreateDataSource
+grpcurl -plaintext -d '{name: localhost@postgres, token: 5872104779978545362}' -proto src/grpc/driver.proto localhost:9999 cdriver.CDriver/GetDataSource
